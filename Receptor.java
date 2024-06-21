@@ -1,16 +1,22 @@
 /* ***************************************************************
 * Autor............: Hugo Botelho Santana
 * Matricula........: 202210485
-* Inicio...........: 28/04/2023
-* Ultima alteracao.: 04/05/2023
-* Nome.............: Camada Enlace
-* Funcao...........: Simular o enquadramento da camada de Enlace de dados
+* Inicio...........: 20/05/2023
+* Ultima alteracao.: 31/05/2023
+* Nome.............: Camada de Enlace de dados Controle de erro
+* Funcao...........: Simular a camada enlace de dados de uma rede
 *************************************************************** */
 
 //Importacao das bibliotecas do JavaFx
 
 import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.stage.Popup;
 
 public class Receptor {
   private int tipoDeDecodificacao = 0;
@@ -20,6 +26,12 @@ public class Receptor {
   int qtdBitsTotais = 0;
   int tipoControleErro = 0;
   boolean detectouErro = false;
+  private int tipoControleFluxo = 0;
+  // private int frame_expected = 0;
+  private String[] frame_expected = { "00", "01", "10", "11" };
+  private int indiceNextFrame = 0;
+  private String[] ackJanela1Bit = { "00", "01", "10", "11" };
+  private int indiceAck = 0;
 
   public Receptor() {
     Platform.runLater(() -> {
@@ -63,16 +75,83 @@ public class Receptor {
     this.tipoDeEnquadramento = tipoDeEnquadramento;
   }
 
+  /*
+   * ***************************************************************
+   * Metodo: zeraBuffer.
+   * Funcao: metodo para zerar o buffer para a nova mensagem que chegar.
+   * Parametros: rao recebe nada.
+   * Retorno: sem retorno.
+   */
   public void zeraBuffer() {
     this.buffer = "";
   }
 
+  /*
+   * ***************************************************************
+   * Metodo: setQtdBitsTotais.
+   * Funcao: metodo para inserir a quantidade de bits totais.
+   * Parametros: recebe a quantidade de bits totais do tipo inteiro.
+   * Retorno: sem retorno.
+   */
   public void setQtdBitsTotais(int qtdBitsTotais) {
     this.qtdBitsTotais = qtdBitsTotais;
   }
 
+  /*
+   * ***************************************************************
+   * Metodo: setTipoControleErro.
+   * Funcao: metodo para inserir o tipo de controle do erro.
+   * Parametros: recebe a o tipo de controle do erro do tipo inteiro.
+   * Retorno: sem retorno.
+   */
   public void setTipoControleErro(int n) {
     this.tipoControleErro = n;
+  }
+
+  public void setTipoControleFluxo(int n) {
+    this.tipoControleFluxo = n;
+  }
+
+  private void nextFrameExpected() {
+    indiceNextFrame++;
+    if (indiceNextFrame > 3) {
+      indiceNextFrame = 0;
+    }
+  }
+
+  private void nextAck() {
+    indiceAck++;
+    if (indiceAck > 3) {
+      indiceAck = 0;
+    }
+  }
+
+  private String retiraNumDeSerieDoQuadro(int[] quadro) {
+    String num = "";
+    int deslocaQuadro = 31;
+    int indexQuadro = 0;
+    for (int i = 0; i < qtdBitsTotais; i++) {
+      int bit = (quadro[indexQuadro] >> deslocaQuadro) & 1;
+      if (i >= qtdBitsTotais - 2) { // pega os dois bits do numero de sequencia do quadro
+        if (bit == 1) {
+          num += '1';
+        } else {
+          num += '0';
+        }
+      }
+      deslocaQuadro--;
+      if (deslocaQuadro < 0) {
+        deslocaQuadro = 31;
+        indexQuadro++;
+      }
+    }
+    System.out.println("Esse e o numero de sequencia do quadro " + num);
+    System.out.println("Esse e o quadro no num serie: ");
+    for (int i = 0; i < quadro.length; i++) {
+      System.out.println(String.format("%32s",
+          Integer.toBinaryString(quadro[i])).replace(' ', '0'));
+    }
+    return num;
   }
 
   /*
@@ -85,35 +164,64 @@ public class Receptor {
    * Retorno: sem retorno.
    */
   public void CamadaFisicaReceptora(int fluxoBrutoDeBits[]) {
+    // se o tipo de enquadramento for violacao, entao primeiro vai chamar o controle
+    // de erro, o controle de erro vai chamar a decodificacao fisica e a
+    // decodificacao fisica vai chamar a camada de apresentacaos
     int[] quadro = new int[0]; // ATENÇÃO: trabalhar com BITS!!!
-    switch (tipoDeDecodificacao) {
-      case 0: // codificao binaria
-        quadro = CamadaFisicaReceptoraDecodificacaoBinaria(fluxoBrutoDeBits);
-        break;
-      case 1: // codificacao manchester
-        if (tipoDeEnquadramento == 3) {
-          fluxoBrutoDeBits = DecodificacaoViolacaoCamadaFisica(fluxoBrutoDeBits);
-        }
-        quadro = CamadaFisicaReceptoraDecodificacaoManchester(fluxoBrutoDeBits);
-        break;
-      case 2: // codificacao manchester diferencial
-        if (tipoDeEnquadramento == 3) {
-          fluxoBrutoDeBits = DecodificacaoViolacaoCamadaFisica(fluxoBrutoDeBits);
-        }
-        quadro = CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(fluxoBrutoDeBits);
-        break;
-    }// fim do switch/case
-     // chama proxima camada
-    CamadaEnlaceDadosReceptora(quadro);
+    if (tipoDeEnquadramento != 3) {
+      switch (tipoDeDecodificacao) {
+        case 0: // codificao binaria
+          quadro = CamadaFisicaReceptoraDecodificacaoBinaria(fluxoBrutoDeBits);
+          break;
+        case 1: // codificacao manchester
+          // if (tipoDeEnquadramento == 3) {
+          // fluxoBrutoDeBits = DecodificacaoViolacaoCamadaFisica(fluxoBrutoDeBits);
+          // }
+          quadro = CamadaFisicaReceptoraDecodificacaoManchester(fluxoBrutoDeBits);
+          break;
+        case 2: // codificacao manchester diferencial
+          // if (tipoDeEnquadramento == 3) {
+          // fluxoBrutoDeBits = DecodificacaoViolacaoCamadaFisica(fluxoBrutoDeBits);
+          // }
+          quadro = CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(fluxoBrutoDeBits);
+          break;
+      }// fim do switch/case
+       // chama proxima camada
+       // System.out.println("Esse é o quadro na camada fisica receptora
+       // decodificado");
+       // for (int i = 0; i < quadro.length; i++) {
+       // System.out.println(String.format("%32s",
+       // Integer.toBinaryString(quadro[i])).replace(' ', '0'));
+       // }
+      CamadaEnlaceDadosReceptora(quadro);
+    } else { // se o tipo de enquadramento for violacao de camada
+      CamadaEnlaceDadosReceptora(fluxoBrutoDeBits);
+    }
     // CamadaDeAplicacaoReceptora(quadro);
   }// fim do metodo CamadaFisicaTransmissora
 
+  /*
+   * ***************************************************************
+   * Metodo: CamadaEnlaceDadosReceptora.
+   * Funcao: metodo para chamar o controle de erro
+   * Parametros: recebe um array do tipo inteiro referenete a mensagem
+   * decodificada.
+   * Retorno: sem retorno.
+   */
   public void CamadaEnlaceDadosReceptora(int quadro[]) {
     CamadaEnlaceDadosReceptoraControleDeErro(quadro);
     // CamadaEnlaceDadosReceptoraDesenquadramento(quadro);
     // CamadaEnlaceDadosReceptoraControleDeFluxo();
   }
 
+  /*
+   * ***************************************************************
+   * Metodo: CamadaEnlaceDadosReceptoraControleDeErro.
+   * Funcao: metodo para chamar o algoritmo de controle de erro para verificar se
+   * detectou o erro
+   * Parametros: recebe um array do tipo inteiro
+   * Retorno: sem retorno.
+   */
   public void CamadaEnlaceDadosReceptoraControleDeErro(int quadro[]) {
     int[] quadroControleErro = new int[quadro.length];
     switch (tipoControleErro) {
@@ -130,14 +238,45 @@ public class Receptor {
         quadroControleErro = CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming(quadro);
         break;
     }// fim do switch/case
-     // System.out.println("Essa e a mensagem no receptor");
-     // for (int i = 0; i < quadroControleErro.length; i++) {
-     // System.out.println(String.format("%32s",
-     // Integer.toBinaryString(quadroControleErro[i])).replace(' ', '0'));
-     // }
-    CamadaEnlaceDadosReceptoraDesenquadramento(quadroControleErro);
+    System.out.println("Essa e a qtd de bits totais tirando os bits de controle: " + qtdBitsTotais);
+    if (detectouErro == false) { // se nao detectou erro, segue o fluxo
+      System.out.println("Nao detectou erro");
+      if (tipoDeEnquadramento != 3) {
+        CamadaEnlaceDadosReceptoraDesenquadramento(quadroControleErro);
+      } else {
+        switch (tipoDeDecodificacao) {
+          case 0: // codificao binaria
+            quadroControleErro = CamadaFisicaReceptoraDecodificacaoBinaria(quadroControleErro);
+            break;
+          case 1: // codificacao manchester
+            if (tipoDeEnquadramento == 3) {
+              quadroControleErro = DecodificacaoViolacaoCamadaFisica(quadroControleErro);
+            }
+            quadroControleErro = CamadaFisicaReceptoraDecodificacaoManchester(quadroControleErro);
+            break;
+          case 2: // codificacao manchester diferencial
+            if (tipoDeEnquadramento == 3) {
+              quadroControleErro = DecodificacaoViolacaoCamadaFisica(quadroControleErro);
+            }
+            quadroControleErro = CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(quadroControleErro);
+            break;
+        }// fim do switch/case
+        CamadaEnlaceDadosReceptoraControleDeFluxo(quadroControleErro);
+        // CamadaDeAplicacaoReceptora(quadroControleErro);
+      }
+    } else {
+      System.out.print("Detectou erro");
+    }
+
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErro
 
+  /*
+   * ***************************************************************
+   * Metodo: CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadePar.
+   * Funcao: metodo para detectar o erro bit de paridade par
+   * Parametros: recebe um array do tipo inteiro
+   * Retorno: retorna o quadro controle erro.
+   */
   public int[] CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadePar(int quadro[]) {
     // implementacao do algoritmo para VERIFICAR SE HOUVE ERRO
     int[] quadroControleErro = new int[quadro.length];
@@ -146,12 +285,14 @@ public class Receptor {
     int deslocaQuadro = 31;
     int indexQuadro = 0;
     int qtdBitsUm = 0;
-    for (int i = 0; i < qtdBitsTotais - 1; i++) {
+    for (int i = 0; i < qtdBitsTotais; i++) {
       int bit = (quadro[indexQuadro] >> deslocaQuadro) & 1;
       if (bit == 1) {
         qtdBitsUm++;
-        quadroControleErro[indexQuadroControleErro] = quadroControleErro[indexQuadroControleErro]
-            | (1 << deslocaQuadroControleErro);
+        if (i != qtdBitsTotais - 1) {
+          quadroControleErro[indexQuadroControleErro] = quadroControleErro[indexQuadroControleErro]
+              | (1 << deslocaQuadroControleErro);
+        }
       }
       deslocaQuadroControleErro--;
       if (deslocaQuadroControleErro < 0) {
@@ -181,6 +322,13 @@ public class Receptor {
     return quadroControleErro;
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadePar
 
+  /*
+   * ***************************************************************
+   * Metodo: CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadeImpar.
+   * Funcao: metodo para detectar o erro bit de paridade impar
+   * Parametros: recebe um array do tipo inteiro
+   * Retorno: retorna o quadro controle erro.
+   */
   public int[] CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadeImpar(int quadro[]) {
     // implementacao do algoritmo para VERIFICAR SE HOUVE ERRO
     int[] quadroControleErro = new int[quadro.length];
@@ -189,12 +337,14 @@ public class Receptor {
     int deslocaQuadro = 31;
     int indexQuadro = 0;
     int qtdBitsUm = 0;
-    for (int i = 0; i < qtdBitsTotais - 1; i++) {
+    for (int i = 0; i < qtdBitsTotais; i++) {
       int bit = (quadro[indexQuadro] >> deslocaQuadro) & 1;
       if (bit == 1) {
         qtdBitsUm++;
-        quadroControleErro[indexQuadroControleErro] = quadroControleErro[indexQuadroControleErro]
-            | (1 << deslocaQuadroControleErro);
+        if (i != qtdBitsTotais - 1) {
+          quadroControleErro[indexQuadroControleErro] = quadroControleErro[indexQuadroControleErro]
+              | (1 << deslocaQuadroControleErro);
+        }
       }
       deslocaQuadroControleErro--;
       if (deslocaQuadroControleErro < 0) {
@@ -211,7 +361,7 @@ public class Receptor {
         break;
       }
     } // fim do for
-
+    // System.out.println(qtdBitsUm);
     if (qtdBitsUm % 2 != 0) { // se a quantiadade de bits 1 for impar, significa que nao detectou erro
       detectouErro = false;
       // Mostrar na tela que nao detectou erro
@@ -225,6 +375,13 @@ public class Receptor {
     return quadroControleErro;
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadeImpar
 
+  /*
+   * ***************************************************************
+   * Metodo: CamadaEnlaceDadosReceptoraControleDeErroCRC.
+   * Funcao: metodo para detectar o erro CRC
+   * Parametros: recebe um array do tipo inteiro
+   * Retorno: retorna o quadro resto.
+   */
   public int[] CamadaEnlaceDadosReceptoraControleDeErroCRC(int quadro[]) {
     // implementacao do algoritmo
     String crc32 = "100000100110000010001110110110111";
@@ -339,7 +496,7 @@ public class Receptor {
     for (int i = 0; i < qtdBitsTotais; i++) { // verifica se o resto deu 0, senao deu e pq houve erro
       int bit = (quadroResto[indexResto] >> deslocaResto) & 1;
       if (bit == 1) {
-        System.out.println("\nDetectou o erro!\n");
+        // System.out.println("\nDetectou o erro!\n");
         detectouErro = true;
         break;
       }
@@ -360,7 +517,7 @@ public class Receptor {
     // }
 
     qtdBitsTotais -= 64;
-    System.out.println(qtdBitsTotais);
+    // System.out.println(qtdBitsTotais);
     indexQuadro = 0;
     indexResto = 0;
     deslocaQuadro = 31;
@@ -394,6 +551,13 @@ public class Receptor {
     return quadroResto;
   }// fim do metodo CamadaEnlaceDadosTransmissoraControledeErroCRC
 
+  /*
+   * ***************************************************************
+   * Metodo: CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming.
+   * Funcao: metodo para detectar o erro Codigo de Hamming
+   * Parametros: recebe um array do tipo inteiro
+   * Retorno: retorna o quadro Hamming.
+   */
   public int[] CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming(int quadro[]) {
     // implementacao do algoritmo // implementacao do algoritmo para VERIFICAR SE
     // HOUVE ERRO
@@ -405,7 +569,8 @@ public class Receptor {
     int expoente = 0;
     // System.out.println("Essa e o quadro com informacao de controle");
     // for (int i = 0; i < quadro.length; i++) {
-    //   System.out.println(String.format("%32s", Integer.toBinaryString(quadro[i])).replace(' ', '0'));
+    // System.out.println(String.format("%32s",
+    // Integer.toBinaryString(quadro[i])).replace(' ', '0'));
     // }
     // deselocaQuadroHamming = 31;
     // verificar os valores dos bits de paridade
@@ -414,15 +579,15 @@ public class Receptor {
       // System.out.println("Pos bit paridade " + posBitParidade);
       int qtdUm = 0;
       deslocaQuadro = 31 - (int) posBitParidade;
-      //System.out.println("Desloca quadro: " + deslocaQuadro);
-      if (posBitParidade > 31){
+      // System.out.println("Desloca quadro: " + deslocaQuadro);
+      if (posBitParidade > 31) {
         deslocaQuadro = 0;
         indexQuadro = 1;
       }
       // System.out.println("Desloca quadro hamming " + deselocaQuadroHamming);
       int indexQuadroAux = indexQuadro;
       for (int j = 0; j < qtdBitsTotais * 4; j++) { // vai verificar todos os bits relacionados ao bit de paridade
-        //System.out.println("Parte da posicao " + deslocaQuadro);
+        // System.out.println("Parte da posicao " + deslocaQuadro);
         for (int k = 0; k < (int) (posBitParidade) + 1; k++) { // conta
           int bit = (quadro[indexQuadroAux] >> deslocaQuadro) & 1;
           // System.out.println(bit);
@@ -455,16 +620,16 @@ public class Receptor {
         // deselocaQuadroHamming = 31 + deselocaQuadroHamming + 1;
         // indexQuadroHammingAux++;
         // }
-          if (indexQuadroAux >= quadro.length) {
-            break;
-          }
+        if (indexQuadroAux >= quadro.length) {
+          break;
+        }
       }
       if (qtdUm % 2 == 1) { // se a quantidadde de 1 (incluindo a informacao de controle) nao for par, entao
                             // deu erro
-        System.out.println("\n\nDetectou ERRO! na iteracao " + i + "\n\n");
+        // System.out.println("\n\nDetectou ERRO! na iteracao " + i + "\n\n");
         detectouErro = true;
       }
-      //System.out.println(qtdUm);
+      // System.out.println(qtdUm);
     }
 
     // retira os bits de informacao de controle de quadroHamming
@@ -474,7 +639,8 @@ public class Receptor {
     deselocaQuadroHamming = 31;
     for (int i = 0; i < qtdBitsTotais + 64; i++) {
       double potencia = Math.pow(2, expoente) - 1;
-      if (i == (int) potencia) { // se a posicao for igual a uma potencia de 2 (menos 1, pq o array comeca de 0), entao apenas pula a posicao
+      if (i == (int) potencia) { // se a posicao for igual a uma potencia de 2 (menos 1, pq o array comeca de 0),
+                                 // entao apenas pula a posicao
         expoente++;
         deslocaQuadro--;
         if (deslocaQuadro < 0) {
@@ -503,15 +669,24 @@ public class Receptor {
     } // fim do for
     // System.out.println("Essa e o quadro Hamming");
     // for (int i = 0; i < quadroHamming.length; i++) {
-    //   System.out.println(String.format("%32s", Integer.toBinaryString(quadroHamming[i])).replace(' ', '0'));
+    // System.out.println(String.format("%32s",
+    // Integer.toBinaryString(quadroHamming[i])).replace(' ', '0'));
     // }
+    qtdBitsTotais -= 7;
     return quadroHamming;
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming
 
+  /*
+   * ***************************************************************
+   * Metodo: CamadaEnlaceDadosReceptoraDesenquadramento.
+   * Funcao: metodo para fazer o desenquadramento com base no escolhido pelo
+   * usuario
+   * Parametros: recebe um array do tipo inteiro
+   * Retorno: sem retorno.
+   */
   public void CamadaEnlaceDadosReceptoraDesenquadramento(int quadro[]) {
-
-    int quadroDesenquadrado[] = new int[0]; // mudar depois
-
+    int quadroDesenquadrado[] = new int[0]; // mudar depoi
+    String sequencia = retiraNumDeSerieDoQuadro(quadro);
     switch (tipoDeEnquadramento) {
       case 0: // contagem de caracteres
         quadroDesenquadrado = CamadaEnlaceDadosReceptoraDesenquadramentoContagemDeCaracteres(quadro);
@@ -526,7 +701,8 @@ public class Receptor {
         quadroDesenquadrado = quadro;
         break;
     }// fim do switch/case
-    CamadaDeAplicacaoReceptora(quadroDesenquadrado);
+     // CamadaDeAplicacaoReceptora(quadroDesenquadrado);
+    CamadaEnlaceDadosReceptoraControleDeFluxo(quadroDesenquadrado);
   }// fim do metodo CamadaEnlaceTransmissoraEnquadramento
 
   /*
@@ -566,7 +742,7 @@ public class Receptor {
     int deslocaQuadro = 31;
     int indexFLuxo = 0;
     int deslocaFluxo = 31;
-    for (int i = 0; i < fluxoBrutoDeBits.length * 32; i++) { // qtdBitsTotais
+    for (int i = 0; i < qtdBitsTotais; i++) { // qtdBitsTotais
       int posAnterior = deslocaFluxo;
       int posSucessor = deslocaFluxo - 1;
       int bitAnterior = (fluxoBrutoDeBits[indexFLuxo] >> posAnterior) & 1;
@@ -610,7 +786,7 @@ public class Receptor {
      * Integer.toBinaryString(quadro[i])).replace(' ', '0'));
      * }
      */
-
+    qtdBitsTotais = qtdBitsTotais / 2;
     return quadro;
   }
 
@@ -633,9 +809,9 @@ public class Receptor {
     int deslocaFluxo = 29;
     int primeiroBit = (fluxoBrutoDeBits[0] >> 31) & 1;
     int segundoBit = (fluxoBrutoDeBits[0] >> 30) & 1;
-    if (tipoDeEnquadramento == 3) {
-      fluxoBrutoDeBits = DecodificacaoViolacaoCamadaFisica(fluxoBrutoDeBits);
-    }
+    // if (tipoDeEnquadramento == 3) {
+    // fluxoBrutoDeBits = DecodificacaoViolacaoCamadaFisica(fluxoBrutoDeBits);
+    // }
     for (int i = 0; i < fluxoBrutoDeBits.length * 32; i++) { // qtdBitsTotais
       if (i == 0) { // se esta na primeira iteracao
         if (primeiroBit == 1 && segundoBit == 0) {
@@ -746,6 +922,7 @@ public class Receptor {
      * Integer.toBinaryString(quadro[i])).replace(' ', '0'));
      * }
      */
+    qtdBitsTotais = qtdBitsTotais / 2;
     return quadro;
   }
 
@@ -1038,6 +1215,39 @@ public class Receptor {
     return quadroDesenquadrado;
   }
 
+  public void CamadaEnlaceDadosReceptoraControleDeFluxo(int quadro[]) {
+    int[] quadroFluxo = new int[0];
+    switch (tipoControleFluxo) {
+      case 0: // protocolo de janela deslizante de 1 bit
+        quadroFluxo = CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(quadro);
+        break;
+      case 1: // protocolo de janela deslizante go-back-n
+        // quadroFluxo = CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(quadro);
+        break;
+      case 2: // protocolo de janela deslizante com retransmissão seletiva
+        // quadroFluxo =
+        // CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(quadro);
+        break;
+      default:
+        quadroFluxo = quadro;
+        break;
+    }// fim do switch/case
+     // semaforoRecepcao.release();
+    CamadaDeAplicacaoReceptora(quadroFluxo);
+  }// fim do metodo CamadaEnlaceDadosReceptoraControleDeFluxo
+
+  public int[] CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(int quadro[]) {
+    if ('0' != frame_expected[indiceNextFrame].charAt(1)) {
+      System.out.println("Quadro chegou com erro ou quadro duplicado, ignora");
+      return null;
+    } else {
+      // implementar logica para enviar o ack do quadro recebido
+      // implementar a logica para lidar com quadros duplicados
+      nextFrameExpected();
+      return quadro;
+    }
+  }// fim do metodo CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit
+
   /*
    * ***************************************************************
    * Metodo: CamadaDeAplicacaoReceptora.
@@ -1047,37 +1257,40 @@ public class Receptor {
    * Retorno: sem retorno.
    */
   public void CamadaDeAplicacaoReceptora(int quadro[]) {
-    /*
-     * for (int i = 0; i < quadro.length; i++){
-     * System.out.println("Esse e o quadro CamadaDeAplicacaoReceptora "+String.
-     * format("%32s", Integer.toBinaryString(quadro[i])).replace(' ', '0'));
-     * }
-     */
+
+    // for (int i = 0; i < quadro.length; i++){
+    // System.out.println("Esse e o quadro CamadaDeAplicacaoReceptora "+String.
+    // format("%32s", Integer.toBinaryString(quadro[i])).replace(' ', '0'));
+    // }
+
     String mensagem = "";
     // String representando a sequência de bits
     String binaryString = "";
     int contador = 0;
-    for (int i = 0; i < quadro.length; i++) {
-      for (int j = 31; j >= 0; j--) {
-        int bit = (quadro[i] >> j) & 1;
-        if (bit == 1) {
-          binaryString += "1";
-        } else {
-          binaryString += "0";
-        }
-        contador += 1;
-        if (contador == 8) {
-          int intValue = Integer.parseInt(binaryString, 2);
-          mensagem += (char) intValue;
-          binaryString = "";
-          contador = 0;
+    if (quadro != null) { //se houve erro ou o quadro foi duplicado, ignora
+      for (int i = 0; i < quadro.length; i++) {
+        for (int j = 31; j >= 0; j--) {
+          int bit = (quadro[i] >> j) & 1;
+          if (bit == 1) {
+            binaryString += "1";
+          } else {
+            binaryString += "0";
+          }
+          contador += 1;
+          if (contador == 8) {
+            int intValue = Integer.parseInt(binaryString, 2);
+            mensagem += (char) intValue;
+            binaryString = "";
+            contador = 0;
+          }
         }
       }
+      // System.out.println("Essa é a mensagem:" + mensagem);
+      // chama proxima camada
+      buffer += mensagem;
+      AplicacaoReceptora(buffer);
     }
-    // System.out.println("Essa é a mensagem:" + mensagem);
-    // chama proxima camada
-    buffer += mensagem;
-    AplicacaoReceptora(buffer);
+
   }// fim do metodo CamadaDeAplicacaoReceptora
 
   /*

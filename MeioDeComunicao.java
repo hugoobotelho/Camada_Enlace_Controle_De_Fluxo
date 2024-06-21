@@ -1,14 +1,15 @@
 /* ***************************************************************
 * Autor............: Hugo Botelho Santana
 * Matricula........: 202210485
-* Inicio...........: 28/04/2023
-* Ultima alteracao.: 04/05/2023
-* Nome.............: Camada Enlace
-* Funcao...........: Simular o enquadramento da camada de Enlace de dados
+* Inicio...........: 20/05/2023
+* Ultima alteracao.: 31/05/2023
+* Nome.............: Camada de Enlace de dados Controle de erro
+* Funcao...........: Simular a camada enlace de dados de uma rede
 *************************************************************** */
 
 //Importacao das bibliotecas do JavaFx
 
+import java.util.Arrays;
 import java.util.Random;
 
 import javafx.application.Platform;
@@ -24,12 +25,14 @@ public class MeioDeComunicao {
   private int tipoControleErro = 0;
   private int porcentagemErro = 0;
   private int qtdBitsErrados = 0;
+  private int sentido = 0; // testando
+  public boolean erro = false;
 
   /*
    * ***************************************************************
    * Metodo: setTipoDeCodificacao.
    * Funcao: metodo para setar tipo de codificacao da mensagem.
-   * Parametros: recebe uma quantidade de caracters do tipo inteiro.
+   * Parametros: recebe o tipo de codificacao do tipo inteiro.
    * Retorno: sem retorno.
    */
 
@@ -52,7 +55,7 @@ public class MeioDeComunicao {
    * ***************************************************************
    * Metodo: setQtdBitsTotais.
    * Funcao: metodo para setar a quantidade de bits da mensagem.
-   * Parametros: recebe o tipo de enquadramento do tipo Inteiro.
+   * Parametros: recebe a quantidade de bits totais do tipo Inteiro.
    * Retorno: sem retorno.
    */
   public void setQtdBitsTotais(int qtdBitsTotais) {
@@ -60,16 +63,41 @@ public class MeioDeComunicao {
     this.qtdBitsFluxo = qtdBitsTotais;
   }
 
+  /*
+   * ***************************************************************
+   * Metodo: setTipoControleErro.
+   * Funcao: metodo para inserir o tipo de controle de erro.
+   * Parametros: recebe o tipo de controle de erro do tipo inteiro.
+   * Retorno: sem retorno.
+   */
   public void setTipoControleErro(int tipoControleErro) {
     this.tipoControleErro = tipoControleErro;
   }
 
+  /*
+   * ***************************************************************
+   * Metodo: setPorcentagemErro.
+   * Funcao: metodo para inserir a porcentagem de ocorrer o erro.
+   * Parametros: recebe a porcentagem do erro do tipo inteiro.
+   * Retorno: sem retorno.
+   */
   public void setPorcentagemErro(int porcentagemErro) {
     this.porcentagemErro = porcentagemErro;
   }
 
+  /*
+   * ***************************************************************
+   * Metodo: setQtdBistErrados.
+   * Funcao: metodo para inserir a quantidade de bits que serao alterados.
+   * Parametros: recebe a quantidade de bits totais do tipo inteiro.
+   * Retorno: sem retorno.
+   */
   public void setQtdBistErrados(int qtdBitsErrados) {
     this.qtdBitsErrados = qtdBitsErrados;
+  }
+
+  public void setSentidoOnda(int n) {
+    this.sentido = n;
   }
 
   /*
@@ -173,148 +201,54 @@ public class MeioDeComunicao {
       Principal.root.getChildren().addAll(b1, a1, b2, a2, b3, a3, b4, a4, b5, a5, b6, a6, v1, v2, v3, v4, v5);
     });
     new Thread(() -> {
-      for (int i = 0; i < fluxoBrutoDeBits.length; i++) {
-        for (int j = 31; j >= 0; j--) {
-          int bit = (fluxoBrutoDeBits[i] >> j) & 1;
-          if (bit == 1) {
-            Platform.runLater(() -> {
-              arraySinaisAltos[0].setVisible(true);
-              arraySinaisBaixos[0].setVisible(false);
-              if (/* !arraySinaisAltos[1].isVisible()|| */arraySinaisBaixos[1].isVisible()) {
-                arrayTransicoes[0].setVisible(true);
-              } else {
-                arrayTransicoes[0].setVisible(false);
-              }
-            });
-          } else {
-            Platform.runLater(() -> {
-              arraySinaisAltos[0].setVisible(false);
-              arraySinaisBaixos[0].setVisible(true);
-              if (/* !arraySinaisBaixos[1].isVisible()|| */arraySinaisAltos[1].isVisible()) {
-                arrayTransicoes[0].setVisible(true);
-              } else {
-                arrayTransicoes[0].setVisible(false);
-              }
-            });
-          }
-          try {
-            Thread.sleep(50); // Adiciona um pequeno intervalo entre as iteracoes ALTERAR DEPOIS!!!
-          } catch (InterruptedException e) {
-            // e.printStackTrace();
-          }
 
-          // Atualiza a onda
-          Platform.runLater(() -> {
-            for (int k = 5; k > 0; k--) {
-              if (arraySinaisAltos[k - 1].isVisible()) {
-                arraySinaisAltos[k].setVisible(true);
-                arraySinaisBaixos[k].setVisible(false);
-              } else if (arraySinaisBaixos[k - 1].isVisible()) {
-                arraySinaisAltos[k].setVisible(false);
-                arraySinaisBaixos[k].setVisible(true);
-              }
-            }
-            for (int k = 5; k > 0; k--) {
-              if (((arraySinaisAltos[k - 1].isVisible() && !arraySinaisAltos[k].isVisible())
-                  || (!arraySinaisAltos[k - 1].isVisible() && arraySinaisAltos[k].isVisible()))
-                  && ((arraySinaisBaixos[k - 1].isVisible() && !arraySinaisBaixos[k].isVisible())
-                      || (!arraySinaisBaixos[k - 1].isVisible() && arraySinaisBaixos[k].isVisible()))) {
-                arrayTransicoes[k - 1].setVisible(true);
-              } else {
-                arrayTransicoes[k - 1].setVisible(false);
-              }
-            }
-          });
-          qtdBitsTotais--;
-          if (qtdBitsTotais <= 0) {
-            break;
-          }
-        }
-        if (qtdBitsTotais <= 0) {
-          break;
-        }
-      }
-      Platform.runLater(() -> {
-        arraySinaisAltos[0].setVisible(false);
-        arraySinaisBaixos[0].setVisible(false);
-      });
-      try {
-        Thread.sleep(150); // Adiciona um pequeno intervalo entre as iteracoes, ALTERAR DEPOIS!!!
-      } catch (InterruptedException e) {
-        // e.printStackTrace();
-      }
-      for (int i = 5; i > 0; i--) {
-        Platform.runLater(() -> {
-          for (int j = 5; j > 0; j--) {
-            if (arraySinaisAltos[j - 1].isVisible()) {
-              arraySinaisAltos[j].setVisible(true);
-              arraySinaisBaixos[j].setVisible(false);
-            } else if (arraySinaisBaixos[j - 1].isVisible()) {
-              arraySinaisAltos[j].setVisible(false);
-              arraySinaisBaixos[j].setVisible(true);
-            } else if (!arraySinaisAltos[j - 1].isVisible() && !arraySinaisBaixos[j - 1].isVisible()) {
-              arraySinaisAltos[j].setVisible(false);
-              arraySinaisBaixos[j].setVisible(false);
-            }
-          }
-          for (int k = 5; k > 0; k--) {
-            if (((arraySinaisAltos[k - 1].isVisible() && !arraySinaisAltos[k].isVisible())
-                || (!arraySinaisAltos[k - 1].isVisible() && arraySinaisAltos[k].isVisible()))
-                && ((arraySinaisBaixos[k - 1].isVisible() && !arraySinaisBaixos[k].isVisible())
-                    || (!arraySinaisBaixos[k - 1].isVisible() && arraySinaisBaixos[k].isVisible()))) {
-              arrayTransicoes[k - 1].setVisible(true);
-            } else {
-              arrayTransicoes[k - 1].setVisible(false);
-            }
-          }
-        });
-        try {
-          Thread.sleep(150); // Adiciona um pequeno intervalo entre as iteracoes
-        } catch (InterruptedException e) {
-          // e.printStackTrace();
-        }
-      }
-
-      // int [] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
-      // int [] fluxoBrutoDeBitsPontoB = new int[fluxoBrutoDeBits.length];
-      // for (int i = 0; i < fluxoBrutoDeBitsPontoA.length; i++){
-      // fluxoBrutoDeBitsPontoB[i] = fluxoBrutoDeBitsPontoA[i];
-      // }
       int[] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
       int[] fluxoBrutoDeBitsPontoB = new int[fluxoBrutoDeBits.length];
       int deslocaFluxoPontoA = 31;
       int indexFluxoPontoA = 0;
       int deslocaFluxoPontoB = 31;
       int indexFluxoPontoB = 0;
-      boolean erro;
       Random random = new Random();
       // Gera um número aleatório entre 0 e 10
       double numeroAleatorio = random.nextDouble() * 10; // Multiplica por 100 para ficar na escala de 0 a 100
 
       // Verifica se o número aleatório está dentro da probabilidade fornecida
       if (numeroAleatorio <= porcentagemErro && numeroAleatorio != 0) {
-        System.out.println("Deu erro");
+        // System.out.println("Deu erro");
         erro = true;
       } else {
-        System.out.println("Nao deu erro");
+        // System.out.println("Nao deu erro");
         erro = false;
       }
       Random bitsAleatorios = new Random();
-      int [] posBitAleatorio = new int[qtdBitsErrados];
+      int[] posBitAleatorio = new int[qtdBitsErrados];
       // Gera a quantidade especificada de números aleatórios
       for (int i = 0; i < qtdBitsErrados; i++) {
-          posBitAleatorio[i] = bitsAleatorios.nextInt(qtdBitsFluxo + 1); // Gera um número aleatório entre 0 e qtdBitsFluxo
+        int pos = bitsAleatorios.nextInt(qtdBitsFluxo); // Gera um número aleatório entre 0 e qtdBitsFluxo
+
+        boolean encontrado;
+        do {
+          encontrado = false;
+          for (int j = 0; j < qtdBitsErrados; j++) {
+            if (posBitAleatorio[j] == pos) {
+              encontrado = true;
+              pos = bitsAleatorios.nextInt(qtdBitsFluxo); // Gera um novo número se já estiver presente
+              break;
+            }
+          }
+        } while (encontrado);
+
+        posBitAleatorio[i] = pos;
       }
 
       for (int i = 0; i < qtdBitsFluxo; i++) {
         int bit = (fluxoBrutoDeBitsPontoA[indexFluxoPontoA] >> deslocaFluxoPontoA) & 1;
-        if (erro){ //verifica se houve erro
-          for (int j = 0; j < posBitAleatorio.length; j++){
-            if (i == posBitAleatorio[j]){ //altera o bit na posicao aleatoria
-              if (bit == 1){ //caso o bit seja 1, inverte o valor para 0
+        if (erro) { // verifica se houve erro
+          for (int j = 0; j < posBitAleatorio.length; j++) {
+            if (i == posBitAleatorio[j]) { // altera o bit na posicao aleatoria
+              if (bit == 1) { // caso o bit seja 1, inverte o valor para 0
                 bit = 0;
-              }
-              else{ //se o bit for 0, inverto o valor para 1
+              } else { // se o bit for 0, inverto o valor para 1
                 bit = 1;
               }
             }
@@ -339,9 +273,230 @@ public class MeioDeComunicao {
           break;
         }
       } // fim do for
+      //fluxoBrutoDeBitsPontoB[fluxoBrutoDeBitsPontoB.length-1] = fluxoBrutoDeBitsPontoA[fluxoBrutoDeBitsPontoA.length-1];
       // chama proxima camada
-      Principal.receptor.CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
-      Principal.semaforoEnviarQuadro.release();
+      System.out.println("Esse é o quadro no com informacao de controle no meio");
+      for (int i = 0; i < fluxoBrutoDeBitsPontoB.length; i++){
+      System.out.println(String.format("%32s",
+      Integer.toBinaryString(fluxoBrutoDeBitsPontoB[i])).replace(' ', '0'));
+      }
+
+      if (sentido == 0) { // se o sentido e igual a 0, entao a infromacao vai sair da esquerda para a
+                          // direita
+        for (int i = 0; i < fluxoBrutoDeBits.length; i++) {
+          for (int j = 31; j >= 0; j--) {
+            int bit = (fluxoBrutoDeBits[i] >> j) & 1;
+            if (bit == 1) {
+              Platform.runLater(() -> {
+                arraySinaisAltos[0].setVisible(true);
+                arraySinaisBaixos[0].setVisible(false);
+                if (/* !arraySinaisAltos[1].isVisible()|| */arraySinaisBaixos[1].isVisible()) {
+                  arrayTransicoes[0].setVisible(true);
+                } else {
+                  arrayTransicoes[0].setVisible(false);
+                }
+              });
+            } else {
+              Platform.runLater(() -> {
+                arraySinaisAltos[0].setVisible(false);
+                arraySinaisBaixos[0].setVisible(true);
+                if (/* !arraySinaisBaixos[1].isVisible()|| */arraySinaisAltos[1].isVisible()) {
+                  arrayTransicoes[0].setVisible(true);
+                } else {
+                  arrayTransicoes[0].setVisible(false);
+                }
+              });
+            }
+            try {
+              Thread.sleep(50); // Adiciona um pequeno intervalo entre as iteracoes ALTERAR DEPOIS!!!
+            } catch (InterruptedException e) {
+              // e.printStackTrace();
+            }
+
+            // Atualiza a onda
+            Platform.runLater(() -> {
+              for (int k = 5; k > 0; k--) {
+                if (arraySinaisAltos[k - 1].isVisible()) {
+                  arraySinaisAltos[k].setVisible(true);
+                  arraySinaisBaixos[k].setVisible(false);
+                } else if (arraySinaisBaixos[k - 1].isVisible()) {
+                  arraySinaisAltos[k].setVisible(false);
+                  arraySinaisBaixos[k].setVisible(true);
+                }
+              }
+              for (int k = 5; k > 0; k--) {
+                if (((arraySinaisAltos[k - 1].isVisible() && !arraySinaisAltos[k].isVisible())
+                    || (!arraySinaisAltos[k - 1].isVisible() && arraySinaisAltos[k].isVisible()))
+                    && ((arraySinaisBaixos[k - 1].isVisible() && !arraySinaisBaixos[k].isVisible())
+                        || (!arraySinaisBaixos[k - 1].isVisible() && arraySinaisBaixos[k].isVisible()))) {
+                  arrayTransicoes[k - 1].setVisible(true);
+                } else {
+                  arrayTransicoes[k - 1].setVisible(false);
+                }
+              }
+            });
+            qtdBitsTotais--;
+            if (qtdBitsTotais <= 0) {
+              break;
+            }
+          }
+          if (qtdBitsTotais <= 0) {
+            break;
+          }
+        }
+        Platform.runLater(() -> {
+          arraySinaisAltos[0].setVisible(false);
+          arraySinaisBaixos[0].setVisible(false);
+        });
+        try {
+          Thread.sleep(150); // Adiciona um pequeno intervalo entre as iteracoes, ALTERAR DEPOIS!!!
+        } catch (InterruptedException e) {
+          // e.printStackTrace();
+        }
+        for (int i = 5; i > 0; i--) {
+          Platform.runLater(() -> {
+            for (int j = 5; j > 0; j--) {
+              if (arraySinaisAltos[j - 1].isVisible()) {
+                arraySinaisAltos[j].setVisible(true);
+                arraySinaisBaixos[j].setVisible(false);
+              } else if (arraySinaisBaixos[j - 1].isVisible()) {
+                arraySinaisAltos[j].setVisible(false);
+                arraySinaisBaixos[j].setVisible(true);
+              } else if (!arraySinaisAltos[j - 1].isVisible() && !arraySinaisBaixos[j - 1].isVisible()) {
+                arraySinaisAltos[j].setVisible(false);
+                arraySinaisBaixos[j].setVisible(false);
+              }
+            }
+            for (int k = 5; k > 0; k--) {
+              if (((arraySinaisAltos[k - 1].isVisible() && !arraySinaisAltos[k].isVisible())
+                  || (!arraySinaisAltos[k - 1].isVisible() && arraySinaisAltos[k].isVisible()))
+                  && ((arraySinaisBaixos[k - 1].isVisible() && !arraySinaisBaixos[k].isVisible())
+                      || (!arraySinaisBaixos[k - 1].isVisible() && arraySinaisBaixos[k].isVisible()))) {
+                arrayTransicoes[k - 1].setVisible(true);
+              } else {
+                arrayTransicoes[k - 1].setVisible(false);
+              }
+            }
+          });
+          try {
+            Thread.sleep(150); // Adiciona um pequeno intervalo entre as iteracoes
+          } catch (InterruptedException e) {
+            // e.printStackTrace();
+          }
+        }
+        Principal.receptor.CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
+
+      } else if (sentido == 1) { // se o sentido e igual a 1, entao a informacao vai sair da direita para a
+                                 // esquerda
+        for (int i = 0; i < fluxoBrutoDeBits.length; i++) {
+          for (int j = 31; j >= 0; j--) {
+            int bit = (fluxoBrutoDeBits[i] >> j) & 1;
+            if (bit == 1) {
+              Platform.runLater(() -> {
+                arraySinaisAltos[5].setVisible(true);
+                arraySinaisBaixos[5].setVisible(false);
+                if (/* !arraySinaisAltos[1].isVisible()|| */arraySinaisBaixos[4].isVisible()) {
+                  arrayTransicoes[4].setVisible(true);
+                } else {
+                  arrayTransicoes[4].setVisible(false);
+                }
+              });
+            } else {
+              Platform.runLater(() -> {
+                arraySinaisAltos[5].setVisible(false);
+                arraySinaisBaixos[5].setVisible(true);
+                if (/* !arraySinaisBaixos[1].isVisible()|| */arraySinaisAltos[4].isVisible()) {
+                  arrayTransicoes[4].setVisible(true);
+                } else {
+                  arrayTransicoes[4].setVisible(false);
+                }
+              });
+            }
+            try {
+              Thread.sleep(50); // Adiciona um pequeno intervalo entre as iteracoes ALTERAR DEPOIS!!!
+            } catch (InterruptedException e) {
+              // e.printStackTrace();
+            }
+
+            // Atualiza a onda
+            Platform.runLater(() -> {
+              for (int k = 0; k < 5; k++) {
+                if (arraySinaisAltos[k + 1].isVisible()) {
+                  arraySinaisAltos[k].setVisible(true);
+                  arraySinaisBaixos[k].setVisible(false);
+                } else if (arraySinaisBaixos[k + 1].isVisible()) {
+                  arraySinaisAltos[k].setVisible(false);
+                  arraySinaisBaixos[k].setVisible(true);
+                }
+              }
+              for (int k = 0; k < 5; k++) {
+                if (((arraySinaisAltos[k + 1].isVisible() && !arraySinaisAltos[k].isVisible())
+                    || (!arraySinaisAltos[k + 1].isVisible() && arraySinaisAltos[k].isVisible()))
+                    && ((arraySinaisBaixos[k + 1].isVisible() && !arraySinaisBaixos[k].isVisible())
+                        || (!arraySinaisBaixos[k + 1].isVisible() && arraySinaisBaixos[k].isVisible()))) {
+                  arrayTransicoes[k].setVisible(true);
+                } else {
+                  arrayTransicoes[k].setVisible(false);
+                }
+              }
+            });
+            qtdBitsTotais--;
+            if (qtdBitsTotais <= 0) {
+              break;
+            }
+          }
+          if (qtdBitsTotais <= 0) {
+            break;
+          }
+        }
+        Platform.runLater(() -> {
+          arraySinaisAltos[5].setVisible(false);
+          arraySinaisBaixos[5].setVisible(false);
+        });
+        try {
+          Thread.sleep(150); // Adiciona um pequeno intervalo entre as iteracoes, ALTERAR DEPOIS!!!
+        } catch (InterruptedException e) {
+          // e.printStackTrace();
+        }
+        for (int i = 5; i > 0; i--) {
+          Platform.runLater(() -> {
+            for (int j = 0; j < 5; j++) {
+              if (arraySinaisAltos[j + 1].isVisible()) {
+                arraySinaisAltos[j].setVisible(true);
+                arraySinaisBaixos[j].setVisible(false);
+              } else if (arraySinaisBaixos[j + 1].isVisible()) {
+                arraySinaisAltos[j].setVisible(false);
+                arraySinaisBaixos[j].setVisible(true);
+              } else if (!arraySinaisAltos[j + 1].isVisible() && !arraySinaisBaixos[j + 1].isVisible()) {
+                arraySinaisAltos[j].setVisible(false);
+                arraySinaisBaixos[j].setVisible(false);
+              }
+            }
+            for (int k = 0; k < 5; k++) {
+              if (((arraySinaisAltos[k + 1].isVisible() && !arraySinaisAltos[k].isVisible())
+                  || (!arraySinaisAltos[k + 1].isVisible() && arraySinaisAltos[k].isVisible()))
+                  && ((arraySinaisBaixos[k + 1].isVisible() && !arraySinaisBaixos[k].isVisible())
+                      || (!arraySinaisBaixos[k + 1].isVisible() && arraySinaisBaixos[k].isVisible()))) {
+                arrayTransicoes[k].setVisible(true);
+              } else {
+                arrayTransicoes[k].setVisible(false);
+              }
+            }
+          });
+          try {
+            Thread.sleep(150); // Adiciona um pequeno intervalo entre as iteracoes
+          } catch (InterruptedException e) {
+            // e.printStackTrace();
+          }
+        }
+      }
+
+      // int [] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
+      // int [] fluxoBrutoDeBitsPontoB = new int[fluxoBrutoDeBits.length];
+      // for (int i = 0; i < fluxoBrutoDeBitsPontoA.length; i++){
+      // fluxoBrutoDeBitsPontoB[i] = fluxoBrutoDeBitsPontoA[i];
+      // }
+      Principal.semaforoMeioDeComunicacao.release();
     }).start();
 
   }// fim do metodo MeioDeTransmissao

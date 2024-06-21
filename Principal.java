@@ -2,7 +2,7 @@
 * Autor............: Hugo Botelho Santana
 * Matricula........: 202210485
 * Inicio...........: 20/05/2023
-* Ultima alteracao.: 20/05/2023
+* Ultima alteracao.: 31/05/2023
 * Nome.............: Camada de Enlace de dados Controle de erro
 * Funcao...........: Simular a camada enlace de dados de uma rede
 *************************************************************** */
@@ -29,7 +29,7 @@ import java.util.concurrent.Semaphore;
 // Classe principal que herda da classe Application
 public class Principal extends Application {
   public static Pane root = new Pane();
-  public static Semaphore semaforoEnviarQuadro = new Semaphore(1);
+  public static Semaphore semaforoMeioDeComunicacao = new Semaphore(1);
   public static Transmissor transmissor;
   public static MeioDeComunicao meioDeComunicao;
   public static Receptor receptor;
@@ -38,12 +38,12 @@ public class Principal extends Application {
     Image backgroundImage = new Image("/img/background.png");
     ImageView backgroundImageView = new ImageView(backgroundImage);
     root.getChildren().add(backgroundImageView);
-    
+
     transmissor = new Transmissor();
     meioDeComunicao = new MeioDeComunicao();
     receptor = new Receptor();
 
-    //Transmissor transmissor = new Transmissor();
+    // Transmissor transmissor = new Transmissor();
     transmissor.AplicacaoTransmissora();
 
     // Criação dos ToggleButtons para as opções de codificacao
@@ -151,9 +151,10 @@ public class Principal extends Application {
 
     // Criando um ComboBox e adicionando itens a ele
     ComboBox<String> dropBoxTipoControleErro = new ComboBox<>();
-    dropBoxTipoControleErro.getItems().addAll("Bit de Paridade Par", "Bit de Paridade Impar", "CRC", "Distancia de Hamming");
+    dropBoxTipoControleErro.getItems().addAll("Bit de Paridade Par", "Bit de Paridade Impar", "CRC",
+        "Distancia de Hamming");
     dropBoxTipoControleErro.setValue("Bit de Paridade Par");
-    transmissor.tipoControleErro(0); //seta o valor de tipoControleErro inicialmente como 0
+    transmissor.tipoControleErro(0); // seta o valor de tipoControleErro inicialmente como 0
     // Adicionando um listener para o valor selecionado
     dropBoxTipoControleErro.setOnAction(event -> {
       String selectedItem = dropBoxTipoControleErro.getSelectionModel().getSelectedItem();
@@ -178,9 +179,10 @@ public class Principal extends Application {
         "#FFFFFF; -fx-font-size: 15px; -fx-padding: 10; -fx-background-radius: 10; -fx-border-color: #435D7A; -fx-border-radius: 10; -fx-text-fill: #435D7A; -fx-background-color: #FFFFFF");
     // Criando um ComboBox e adicionando itens a ele
     ComboBox<String> dropBoxTipoPorcentagemErro = new ComboBox<>();
-    dropBoxTipoPorcentagemErro.getItems().addAll("0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%");
+    dropBoxTipoPorcentagemErro.getItems().addAll("0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%",
+        "100%");
     dropBoxTipoPorcentagemErro.setValue("0%");
-    transmissor.porcentagemErro(0); //seta o valor de porcentagemErro inicialmente como 0
+    transmissor.porcentagemErro(0); // seta o valor de porcentagemErro inicialmente como 0
 
     // Adicionando um listener para o valor selecionado
     dropBoxTipoPorcentagemErro.setOnAction(event -> {
@@ -215,7 +217,6 @@ public class Principal extends Application {
     vboxPorcentagemErro.setLayoutY(50);
     root.getChildren().add(vboxPorcentagemErro);
 
-    
     Label labelQtdBitErrado = new Label("Quantidade de Bits Errados");
     labelQtdBitErrado.setStyle(
         "#FFFFFF; -fx-font-size: 15px; -fx-padding: 10; -fx-background-radius: 10; -fx-border-color: #435D7A; -fx-border-radius: 10; -fx-text-fill: #435D7A; -fx-background-color: #FFFFFF");
@@ -223,7 +224,7 @@ public class Principal extends Application {
     ComboBox<String> dropBoxqtdBitErrado = new ComboBox<>();
     dropBoxqtdBitErrado.getItems().addAll("1", "2", "3");
     dropBoxqtdBitErrado.setValue("1");
-    transmissor.qtdBitsErrados(1); //seta o valor de qtdBitsErrados inicialmente como 1
+    transmissor.qtdBitsErrados(1); // seta o valor de qtdBitsErrados inicialmente como 1
 
     // Adicionando um listener para o valor selecionado
     dropBoxqtdBitErrado.setOnAction(event -> {
@@ -231,7 +232,7 @@ public class Principal extends Application {
       if (selectedItem.equals("1")) {
         transmissor.qtdBitsErrados(1);
       } else if (selectedItem.equals("2")) {
-          transmissor.qtdBitsErrados(2);
+        transmissor.qtdBitsErrados(2);
       } else if (selectedItem.equals("3")) {
         transmissor.qtdBitsErrados(3);
       }
@@ -242,6 +243,36 @@ public class Principal extends Application {
     vboxQtdBitErrado.setLayoutY(50);
     vboxQtdBitErrado.setAlignment(Pos.CENTER_RIGHT);
     root.getChildren().add(vboxQtdBitErrado);
+
+    // Criando um ComboBox e adicionando itens a ele
+    ComboBox<String> dropBoxControleFLuxo = new ComboBox<>();
+    dropBoxControleFLuxo.getItems().addAll("Janela Deslizante de 1 Bit", "Janela Deslizante Go-Back-n",
+        "Janela Deslizante Com Retransmissao Seletiva");
+    dropBoxControleFLuxo.setValue("Janela Deslizante de 1 Bit");
+    // Adicionando um listener para o valor selecionado
+    dropBoxControleFLuxo.setOnAction(event -> {
+      String selectedItem = dropBoxControleFLuxo.getSelectionModel().getSelectedItem();
+      if (selectedItem.equals("Janela Deslizante de 1 Bit")) {
+        transmissor.tipoControleFluxo(0);
+        receptor.setTipoControleFluxo(0);
+      } else if (selectedItem.equals("Janela Deslizante Go-Back-n")) {
+        transmissor.tipoControleFluxo(1);
+        receptor.setTipoControleFluxo(1);
+      } else if (selectedItem.equals("Janela Deslizante Com Retransmissao Seletiva")) {
+        transmissor.tipoControleFluxo(2);
+        receptor.setTipoControleFluxo(2);
+      }
+    });
+    dropBoxControleFLuxo.setLayoutX(50);
+    dropBoxControleFLuxo.setLayoutY(600);
+    Label controleFluxo = new Label("Controle de Fluxo");
+    controleFluxo.setStyle(
+        "#FFFFFF; -fx-font-size: 15px; -fx-padding: 10; -fx-background-radius: 10; -fx-border-color: #435D7A; -fx-border-radius: 10; -fx-text-fill: #435D7A; -fx-background-color: #FFFFFF");
+
+    VBox vboxControleFluxo = new VBox(5, controleFluxo, dropBoxControleFLuxo);
+    vboxControleFluxo.setLayoutX(50);
+    vboxControleFluxo.setLayoutY(550);
+    root.getChildren().add(vboxControleFluxo);
 
     Scene scene = new Scene(root, 1100, 700);
     primaryStage.setScene(scene);
