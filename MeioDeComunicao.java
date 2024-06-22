@@ -28,6 +28,9 @@ public class MeioDeComunicao {
   private int sentido = 0; // testando
   public boolean erro = false;
 
+  private int qtdBitsTotaisAck = 0;
+  private int qtdBitsFluxoAck = 0;
+
   /*
    * ***************************************************************
    * Metodo: setTipoDeCodificacao.
@@ -61,6 +64,11 @@ public class MeioDeComunicao {
   public void setQtdBitsTotais(int qtdBitsTotais) {
     this.qtdBitsTotais = qtdBitsTotais;
     this.qtdBitsFluxo = qtdBitsTotais;
+  }
+
+  public void setQtdBitsTotaisAck(int qtdBitsTotaisAck) {
+    this.qtdBitsTotaisAck = qtdBitsTotaisAck;
+    this.qtdBitsFluxoAck = qtdBitsTotaisAck;
   }
 
   /*
@@ -110,10 +118,14 @@ public class MeioDeComunicao {
    */
   public void meioDeComunicacao(int fluxoBrutoDeBits[]) {
 
-    Principal.receptor.setTipoDeCodificacao(tipoDeCodificacao);
-    Principal.receptor.setTipoDeEnquadramento(tipoDeEnquadramento);
-    Principal.receptor.setQtdBitsTotais(qtdBitsTotais);
-    Principal.receptor.setTipoControleErro(tipoControleErro);
+    if (sentido == 0) { // se for o transmissor que esta enviando
+      Principal.receptor.setTipoDeCodificacao(tipoDeCodificacao);
+      Principal.receptor.setTipoDeEnquadramento(tipoDeEnquadramento);
+      Principal.receptor.setQtdBitsTotais(qtdBitsTotais);
+      Principal.receptor.setTipoControleErro(tipoControleErro);
+    } else if (sentido == 1) {
+      Principal.transmissor.setqtdBitsTotaisAck(qtdBitsTotaisAck);
+    }
 
     Image b1Image = new Image("/img/line_horizontal.png");
     ImageView b1 = new ImageView(b1Image);
@@ -202,87 +214,86 @@ public class MeioDeComunicao {
     });
     new Thread(() -> {
 
-      int[] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
-      int[] fluxoBrutoDeBitsPontoB = new int[fluxoBrutoDeBits.length];
-      int deslocaFluxoPontoA = 31;
-      int indexFluxoPontoA = 0;
-      int deslocaFluxoPontoB = 31;
-      int indexFluxoPontoB = 0;
-      Random random = new Random();
-      // Gera um número aleatório entre 0 e 10
-      double numeroAleatorio = random.nextDouble() * 10; // Multiplica por 100 para ficar na escala de 0 a 100
+      if (sentido == 0) { // se o sentido e igual a 0, entao a infromacao vai sair da esquerda para a
+                          // direita
 
-      // Verifica se o número aleatório está dentro da probabilidade fornecida
-      if (numeroAleatorio <= porcentagemErro && numeroAleatorio != 0) {
-        // System.out.println("Deu erro");
-        erro = true;
-      } else {
-        // System.out.println("Nao deu erro");
-        erro = false;
-      }
-      Random bitsAleatorios = new Random();
-      int[] posBitAleatorio = new int[qtdBitsErrados];
-      // Gera a quantidade especificada de números aleatórios
-      for (int i = 0; i < qtdBitsErrados; i++) {
-        int pos = bitsAleatorios.nextInt(qtdBitsFluxo); // Gera um número aleatório entre 0 e qtdBitsFluxo
+        int[] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
+        int[] fluxoBrutoDeBitsPontoB = new int[fluxoBrutoDeBits.length];
+        int deslocaFluxoPontoA = 31;
+        int indexFluxoPontoA = 0;
+        int deslocaFluxoPontoB = 31;
+        int indexFluxoPontoB = 0;
+        Random random = new Random();
+        // Gera um número aleatório entre 0 e 10
+        double numeroAleatorio = random.nextDouble() * 10; // Multiplica por 100 para ficar na escala de 0 a 100
 
-        boolean encontrado;
-        do {
-          encontrado = false;
-          for (int j = 0; j < qtdBitsErrados; j++) {
-            if (posBitAleatorio[j] == pos) {
-              encontrado = true;
-              pos = bitsAleatorios.nextInt(qtdBitsFluxo); // Gera um novo número se já estiver presente
-              break;
+        // Verifica se o número aleatório está dentro da probabilidade fornecida
+        if (numeroAleatorio <= porcentagemErro && numeroAleatorio != 0) {
+          // System.out.println("Deu erro");
+          erro = true;
+        } else {
+          // System.out.println("Nao deu erro");
+          erro = false;
+        }
+        Random bitsAleatorios = new Random();
+        int[] posBitAleatorio = new int[qtdBitsErrados];
+        // Gera a quantidade especificada de números aleatórios
+        for (int i = 0; i < qtdBitsErrados; i++) {
+          int pos = bitsAleatorios.nextInt(qtdBitsFluxo); // Gera um número aleatório entre 0 e qtdBitsFluxo
+
+          boolean encontrado;
+          do {
+            encontrado = false;
+            for (int j = 0; j < qtdBitsErrados; j++) {
+              if (posBitAleatorio[j] == pos) {
+                encontrado = true;
+                pos = bitsAleatorios.nextInt(qtdBitsFluxo); // Gera um novo número se já estiver presente
+                break;
+              }
             }
-          }
-        } while (encontrado);
+          } while (encontrado);
 
-        posBitAleatorio[i] = pos;
-      }
+          posBitAleatorio[i] = pos;
+        }
 
-      for (int i = 0; i < qtdBitsFluxo; i++) {
-        int bit = (fluxoBrutoDeBitsPontoA[indexFluxoPontoA] >> deslocaFluxoPontoA) & 1;
-        if (erro) { // verifica se houve erro
-          for (int j = 0; j < posBitAleatorio.length; j++) {
-            if (i == posBitAleatorio[j]) { // altera o bit na posicao aleatoria
-              if (bit == 1) { // caso o bit seja 1, inverte o valor para 0
-                bit = 0;
-              } else { // se o bit for 0, inverto o valor para 1
-                bit = 1;
+        for (int i = 0; i < qtdBitsFluxo; i++) {
+          int bit = (fluxoBrutoDeBitsPontoA[indexFluxoPontoA] >> deslocaFluxoPontoA) & 1;
+          if (erro) { // verifica se houve erro
+            for (int j = 0; j < posBitAleatorio.length; j++) {
+              if (i == posBitAleatorio[j]) { // altera o bit na posicao aleatoria
+                if (bit == 1) { // caso o bit seja 1, inverte o valor para 0
+                  bit = 0;
+                } else { // se o bit for 0, inverto o valor para 1
+                  bit = 1;
+                }
               }
             }
           }
-        }
-        if (bit == 1) {
-          fluxoBrutoDeBitsPontoB[indexFluxoPontoB] = fluxoBrutoDeBitsPontoB[indexFluxoPontoB]
-              | (1 << deslocaFluxoPontoB);
-        }
-        deslocaFluxoPontoB--;
-        if (deslocaFluxoPontoB < 0) {
-          deslocaFluxoPontoB = 31;
-          indexFluxoPontoB++;
-        }
-        deslocaFluxoPontoA--;
-        if (deslocaFluxoPontoA < 0) {
-          deslocaFluxoPontoA = 31;
-          indexFluxoPontoA++;
-        }
-        // System.out.println("Mudou o index de quadro");
-        if (indexFluxoPontoA >= fluxoBrutoDeBitsPontoA.length || indexFluxoPontoB >= fluxoBrutoDeBitsPontoB.length) {
-          break;
-        }
-      } // fim do for
-      //fluxoBrutoDeBitsPontoB[fluxoBrutoDeBitsPontoB.length-1] = fluxoBrutoDeBitsPontoA[fluxoBrutoDeBitsPontoA.length-1];
-      // chama proxima camada
-      System.out.println("Esse é o quadro no com informacao de controle no meio");
-      for (int i = 0; i < fluxoBrutoDeBitsPontoB.length; i++){
-      System.out.println(String.format("%32s",
-      Integer.toBinaryString(fluxoBrutoDeBitsPontoB[i])).replace(' ', '0'));
-      }
-
-      if (sentido == 0) { // se o sentido e igual a 0, entao a infromacao vai sair da esquerda para a
-                          // direita
+          if (bit == 1) {
+            fluxoBrutoDeBitsPontoB[indexFluxoPontoB] = fluxoBrutoDeBitsPontoB[indexFluxoPontoB]
+                | (1 << deslocaFluxoPontoB);
+          }
+          deslocaFluxoPontoB--;
+          if (deslocaFluxoPontoB < 0) {
+            deslocaFluxoPontoB = 31;
+            indexFluxoPontoB++;
+          }
+          deslocaFluxoPontoA--;
+          if (deslocaFluxoPontoA < 0) {
+            deslocaFluxoPontoA = 31;
+            indexFluxoPontoA++;
+          }
+          // System.out.println("Mudou o index de quadro");
+          if (indexFluxoPontoA >= fluxoBrutoDeBitsPontoA.length || indexFluxoPontoB >= fluxoBrutoDeBitsPontoB.length) {
+            break;
+          }
+        } // fim do for
+        // chama proxima camada
+        // System.out.println("Esse é o quadro no com informacao de controle no meio");
+        // for (int i = 0; i < fluxoBrutoDeBitsPontoB.length; i++) {
+        // System.out.println(String.format("%32s",
+        // Integer.toBinaryString(fluxoBrutoDeBitsPontoB[i])).replace(' ', '0'));
+        // }
         for (int i = 0; i < fluxoBrutoDeBits.length; i++) {
           for (int j = 31; j >= 0; j--) {
             int bit = (fluxoBrutoDeBits[i] >> j) & 1;
@@ -308,7 +319,7 @@ public class MeioDeComunicao {
               });
             }
             try {
-              Thread.sleep(50); // Adiciona um pequeno intervalo entre as iteracoes ALTERAR DEPOIS!!!
+              Thread.sleep(20); // Adiciona um pequeno intervalo entre as iteracoes ALTERAR DEPOIS!!!
             } catch (InterruptedException e) {
               // e.printStackTrace();
             }
@@ -386,8 +397,87 @@ public class MeioDeComunicao {
         }
         Principal.receptor.CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
 
+        //Principal.semaforoMeioDeComunicacao.release(); //libera o meio para o receptor mandar o ack de volta
+
       } else if (sentido == 1) { // se o sentido e igual a 1, entao a informacao vai sair da direita para a
                                  // esquerda
+        int[] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
+        int[] fluxoBrutoDeBitsPontoB = new int[fluxoBrutoDeBits.length];
+        int deslocaFluxoPontoA = 31;
+        int indexFluxoPontoA = 0;
+        int deslocaFluxoPontoB = 31;
+        int indexFluxoPontoB = 0;
+        Random random = new Random();
+        // Gera um número aleatório entre 0 e 10
+        double numeroAleatorio = random.nextDouble() * 10; // Multiplica por 100 para ficar na escala de 0 a 100
+
+        // Verifica se o número aleatório está dentro da probabilidade fornecida
+        if (numeroAleatorio <= porcentagemErro && numeroAleatorio != 0) {
+          // System.out.println("Deu erro");
+          erro = true;
+        } else {
+          // System.out.println("Nao deu erro");
+          erro = false;
+        }
+        Random bitsAleatorios = new Random();
+        int[] posBitAleatorio = new int[qtdBitsErrados];
+        // Gera a quantidade especificada de números aleatórios
+        for (int i = 0; i < qtdBitsErrados; i++) {
+          int pos = bitsAleatorios.nextInt(qtdBitsFluxoAck); // Gera um número aleatório entre 0 e qtdBitsFluxo
+
+          boolean encontrado;
+          do {
+            encontrado = false;
+            for (int j = 0; j < qtdBitsErrados; j++) {
+              if (posBitAleatorio[j] == pos) {
+                encontrado = true;
+                pos = bitsAleatorios.nextInt(qtdBitsFluxoAck); // Gera um novo número se já estiver presente
+                break;
+              }
+            }
+          } while (encontrado);
+
+          posBitAleatorio[i] = pos;
+        }
+
+        for (int i = 0; i < qtdBitsFluxoAck; i++) {
+          int bit = (fluxoBrutoDeBitsPontoA[indexFluxoPontoA] >> deslocaFluxoPontoA) & 1;
+          if (erro) { // verifica se houve erro
+            for (int j = 0; j < posBitAleatorio.length; j++) {
+              if (i == posBitAleatorio[j]) { // altera o bit na posicao aleatoria
+                if (bit == 1) { // caso o bit seja 1, inverte o valor para 0
+                  bit = 0;
+                } else { // se o bit for 0, inverto o valor para 1
+                  bit = 1;
+                }
+              }
+            }
+          }
+          if (bit == 1) {
+            fluxoBrutoDeBitsPontoB[indexFluxoPontoB] = fluxoBrutoDeBitsPontoB[indexFluxoPontoB]
+                | (1 << deslocaFluxoPontoB);
+          }
+          deslocaFluxoPontoB--;
+          if (deslocaFluxoPontoB < 0) {
+            deslocaFluxoPontoB = 31;
+            indexFluxoPontoB++;
+          }
+          deslocaFluxoPontoA--;
+          if (deslocaFluxoPontoA < 0) {
+            deslocaFluxoPontoA = 31;
+            indexFluxoPontoA++;
+          }
+          // System.out.println("Mudou o index de quadro");
+          if (indexFluxoPontoA >= fluxoBrutoDeBitsPontoA.length || indexFluxoPontoB >= fluxoBrutoDeBitsPontoB.length) {
+            break;
+          }
+        } // fim do for
+        // chama proxima camada
+        // System.out.println("Esse é o quadro no com informacao de controle no meio");
+        // for (int i = 0; i < fluxoBrutoDeBitsPontoB.length; i++) {
+        // System.out.println(String.format("%32s",
+        // Integer.toBinaryString(fluxoBrutoDeBitsPontoB[i])).replace(' ', '0'));
+        // }
         for (int i = 0; i < fluxoBrutoDeBits.length; i++) {
           for (int j = 31; j >= 0; j--) {
             int bit = (fluxoBrutoDeBits[i] >> j) & 1;
@@ -413,7 +503,7 @@ public class MeioDeComunicao {
               });
             }
             try {
-              Thread.sleep(50); // Adiciona um pequeno intervalo entre as iteracoes ALTERAR DEPOIS!!!
+              Thread.sleep(20); // Adiciona um pequeno intervalo entre as iteracoes ALTERAR DEPOIS!!!
             } catch (InterruptedException e) {
               // e.printStackTrace();
             }
@@ -440,12 +530,12 @@ public class MeioDeComunicao {
                 }
               }
             });
-            qtdBitsTotais--;
-            if (qtdBitsTotais <= 0) {
+            qtdBitsTotaisAck--;
+            if (qtdBitsTotaisAck <= 0) {
               break;
             }
           }
-          if (qtdBitsTotais <= 0) {
+          if (qtdBitsTotaisAck <= 0) {
             break;
           }
         }
@@ -489,6 +579,7 @@ public class MeioDeComunicao {
             // e.printStackTrace();
           }
         }
+        Principal.transmissor.CamadaFisicaReceptora(fluxoBrutoDeBitsPontoB);
       }
 
       // int [] fluxoBrutoDeBitsPontoA = fluxoBrutoDeBits;
